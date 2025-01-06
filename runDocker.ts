@@ -19,6 +19,9 @@ if (command === 'launch-ddb-local-docker-subprocess') {
   const { dataDir, logsDir, port, options } = JSON.parse(jsonifiedArgs)
 
   const container = await docker.createContainer({
+    AttachStderr:true,
+    AttachStdin:true,
+    AttachStdout:true,
     Image: 'amazon/dynamodb-local:latest',
     name: 'dynamodb-local',
     Tty: true,
