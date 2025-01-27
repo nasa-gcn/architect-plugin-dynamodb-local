@@ -32,7 +32,6 @@ if (command === 'launch-ddb-local-docker-subprocess') {
       }
       await docker.getContainer(existing.Id).remove()
     }
-
     container = await createDdbContainer(port)
   }
   containerId = container.id
