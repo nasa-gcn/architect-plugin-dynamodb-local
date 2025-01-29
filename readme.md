@@ -2,7 +2,7 @@
 
 This is a plugin for a local DynamoDB instance using Docker.
 
-When you are using Architect's sandbox mode, the plugin starts a Docker container running the `amazon/dynamodb-local:latest` image.
+When you are using Architect's sandbox mode, the plugin starts a Docker container running the [`amazon/dynamodb-local:latest`](https://hub.docker.com/r/amazon/dynamodb-local) image.
 
 This can be used alongside other plugins such as [@hicksy/arc-plugin-sandbox-stream](https://github.com/hicksy/arc-plugin-sandbox-stream) to allow for more realistic debugging with `tables-streams`.
 

@@ -1,14 +1,15 @@
 import { launch } from './run.js'
 import {
+  BatchWriteItemCommand,
   DynamoDBClient,
-  PutItemCommand,
-  PutItemCommandOutput,
   UpdateTableCommand,
+  WriteRequest,
 } from '@aws-sdk/client-dynamodb'
 import _arcFunctions from '@architect/functions'
-import { readdirSync, readFileSync } from 'node:fs'
-import path from 'node:path'
+import { readFileSync } from 'node:fs'
 import { marshall } from '@aws-sdk/util-dynamodb'
+import { access, constants } from 'node:fs/promises'
+import dedent from 'dedent'
 
 let local: Awaited<ReturnType<typeof launch>>
 
@@ -35,9 +36,14 @@ export const sandbox = {
     const client = await _arcFunctions.tables()
     if (seedFile) {
       if (['sandbox-seed.json', 'sandbox-seed.js'].includes(seedFile)) {
-        console.log(
-          "The seed file has not been renamed. Architect's default seed function will be used. This may result in many triggers of your streams functions."
-        )
+        console.log(dedent`
+          The provided seed file matches Architect's default seed pattern.
+          Architect's seed function will be used. This may result in many 
+          triggers of your streams functions.
+          If you wish to use the seeding function build into this package, 
+          please rename your file to something other than 'sandbox-seed.json' 
+          or 'sandbox-seed.js'.
+          `)
       } else {
         await seedDb(seedFile, dynamodbClient)
       }
@@ -63,48 +69,51 @@ export const sandbox = {
 
 async function seedDb(seedFile: string, dynamoDB: DynamoDBClient) {
   try {
-    const filePath = searchFileInCurrentDirectory(seedFile)
-
-    if (!filePath) {
-      console.log('File not found')
+    try {
+      await access(seedFile, constants.R_OK | constants.W_OK)
+    } catch {
+      console.log(`File "${seedFile}" not found in the current directory.`)
       return
     }
-    const data = JSON.parse(readFileSync(filePath, 'utf8'))
+    const data = JSON.parse(readFileSync(seedFile, 'utf8'))
     const client = await _arcFunctions.tables()
 
-    const putItemPromises: Promise<PutItemCommandOutput>[] = []
-    for (const TableName of Object.keys(data)) {
-      // @ts-expect-error `Item` can be any table item
-      data[TableName].map((Item) => {
-        putItemPromises.push(
-          dynamoDB.send(
-            new PutItemCommand({
-              TableName: client.name(TableName),
-              Item: marshall(Item),
+    Object.entries(data).forEach(async ([tableName, items]) => {
+      const RequestItems: Record<string, WriteRequest[]> = {}
+      const formattedName = client.name(tableName)
+
+      RequestItems[formattedName] = []
+      // @ts-expect-error `Items` is an array of any table items
+      for (const item of items) {
+        RequestItems[formattedName].push({
+          PutRequest: {
+            Item: marshall(item),
+          },
+        })
+        // BatchWriteItems has a limit of 25 items per batch
+        if (RequestItems[formattedName].length == 25) {
+          await dynamoDB.send(
+            new BatchWriteItemCommand({
+              RequestItems: RequestItems,
             })
           )
+          RequestItems[formattedName] = []
+        }
+      }
+
+      // Handle remainder
+      if (RequestItems[formattedName].length !== 0) {
+        console.log(formattedName)
+        await dynamoDB.send(
+          new BatchWriteItemCommand({
+            RequestItems,
+          })
         )
-      })
-      console.log(`Seeding ${TableName} with ${data[TableName].length} items`)
-    }
-    await Promise.all(putItemPromises)
+      }
+    })
+
     console.log(`DynamoDB local tables seeded from ${seedFile}`)
   } catch (error) {
     console.error('Error seeding data:', error)
-  }
-}
-
-function searchFileInCurrentDirectory(fileName: string): string | null {
-  const currentDir = process.cwd() // Current working directory
-  const files = readdirSync(currentDir) // Read the contents of the current directory
-
-  // Check if the file exists in the directory
-  const foundFile = files.find((file) => file === fileName)
-
-  if (foundFile) {
-    return path.resolve(currentDir, foundFile) // Return the full path
-  } else {
-    console.log(`File "${fileName}" not found in the current directory.`)
-    return null
   }
 }

@@ -32,6 +32,7 @@
     "@aws-sdk/client-dynamodb-streams": "^3.731.1",
     "@aws-sdk/client-ssm": "^3.731.1",
     "@aws-sdk/lib-dynamodb": "^3.731.1",
+    "dedent": "^1.5.3",
     "dockerode": "^4.0.0",
     "env-paths": "^3.0.0",
     "rimraf": "^4.1.2",

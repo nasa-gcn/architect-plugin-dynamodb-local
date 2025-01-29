@@ -10,6 +10,11 @@ import waitPort from 'wait-port'
 import { UnexpectedResolveError } from './promises.js'
 import { launchDocker, removeContainer } from './runDocker.js'
 import { execSync } from 'node:child_process'
+import {
+  DynamoDB,
+  DynamoDBClient,
+  ListTablesCommand,
+} from '@aws-sdk/client-dynamodb'
 
 export type LauncherFunction<T = object> = (
   props: T & {
@@ -37,12 +42,11 @@ export async function launch() {
   try {
     await waitPort({ port })
     let dynamodbReady = false
+    const ddbClient = new DynamoDBClient({ endpoint: url })
     while (!dynamodbReady) {
       try {
-        execSync(
-          'aws dynamodb list-tables --endpoint-url http://localhost:8000'
-        )
-        dynamodbReady = true
+        const ddbPing = await ddbClient.send(new ListTablesCommand({}))
+        if (ddbPing.TableNames) dynamodbReady = true
       } catch (e) {
         console.log('table connection not ready, trying again')
       }
