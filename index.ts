@@ -1,15 +1,16 @@
 import { launch } from './run.js'
 import {
   BatchWriteItemCommand,
+  BatchWriteItemCommandOutput,
   DynamoDBClient,
   UpdateTableCommand,
   WriteRequest,
 } from '@aws-sdk/client-dynamodb'
 import _arcFunctions from '@architect/functions'
-import { readFileSync } from 'node:fs'
 import { marshall } from '@aws-sdk/util-dynamodb'
-import { access, constants } from 'node:fs/promises'
+import { access, constants, readFile } from 'node:fs/promises'
 import dedent from 'dedent'
+import chunk from 'lodash.chunk'
 
 let local: Awaited<ReturnType<typeof launch>>
 
@@ -70,47 +71,37 @@ export const sandbox = {
 async function seedDb(seedFile: string, dynamoDB: DynamoDBClient) {
   try {
     try {
-      await access(seedFile, constants.R_OK | constants.W_OK)
+      await access(seedFile, constants.R_OK)
     } catch {
       console.log(`File "${seedFile}" not found in the current directory.`)
       return
     }
-    const data = JSON.parse(readFileSync(seedFile, 'utf8'))
+    const data = JSON.parse(await readFile(seedFile, 'utf8'))
     const client = await _arcFunctions.tables()
 
-    Object.entries(data).forEach(async ([tableName, items]) => {
-      const RequestItems: Record<string, WriteRequest[]> = {}
+    const batches: Promise<BatchWriteItemCommandOutput>[] = []
+    Object.entries(data).forEach(([tableName, items]) => {
       const formattedName = client.name(tableName)
 
-      RequestItems[formattedName] = []
       // @ts-expect-error `Items` is an array of any table items
-      for (const item of items) {
-        RequestItems[formattedName].push({
-          PutRequest: {
-            Item: marshall(item),
-          },
-        })
-        // BatchWriteItems has a limit of 25 items per batch
-        if (RequestItems[formattedName].length == 25) {
-          await dynamoDB.send(
-            new BatchWriteItemCommand({
-              RequestItems: RequestItems,
-            })
-          )
-          RequestItems[formattedName] = []
-        }
-      }
+      const chunks = chunk(items, 25)
 
-      // Handle remainder
-      if (RequestItems[formattedName].length !== 0) {
-        console.log(formattedName)
-        await dynamoDB.send(
-          new BatchWriteItemCommand({
-            RequestItems,
-          })
-        )
+      for (const chunk of chunks) {
+        const RequestItems: Record<string, WriteRequest[]> = {}
+        RequestItems[formattedName] = chunk.map((item) => {
+          return {
+            PutRequest: {
+              Item: marshall(item),
+            },
+          }
+        })
+
+        console.log('Seeding: ', formattedName)
+
+        batches.push(dynamoDB.send(new BatchWriteItemCommand({ RequestItems })))
       }
     })
+    await Promise.all(batches)
 
     console.log(`DynamoDB local tables seeded from ${seedFile}`)
   } catch (error) {
