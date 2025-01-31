@@ -27,7 +27,7 @@ export const sandbox = {
       region: inv.aws.region,
       endpoint: `http://localhost:${process.env.ARC_TABLES_PORT}`,
       requestHandler: {
-        requestTimeout: 3_000,
+        requestTimeout: 10_000,
         httpsAgent: { maxSockets: 500 }, // Increased from default to allow for higher throughput
       },
     })
