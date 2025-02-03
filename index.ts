@@ -1,16 +1,14 @@
 import { launch } from './run.js'
 import {
   BatchWriteItemCommand,
-  BatchWriteItemCommandOutput,
   DynamoDBClient,
   UpdateTableCommand,
-  WriteRequest,
 } from '@aws-sdk/client-dynamodb'
 import _arcFunctions from '@architect/functions'
 import { marshall } from '@aws-sdk/util-dynamodb'
 import { access, constants, readFile } from 'node:fs/promises'
-import dedent from 'dedent'
-import chunk from 'lodash.chunk'
+import chunk from 'lodash/chunk.js'
+import dedent from 'ts-dedent'
 
 let local: Awaited<ReturnType<typeof launch>>
 
@@ -79,29 +77,25 @@ async function seedDb(seedFile: string, dynamoDB: DynamoDBClient) {
     const data = JSON.parse(await readFile(seedFile, 'utf8'))
     const client = await _arcFunctions.tables()
 
-    const batches: Promise<BatchWriteItemCommandOutput>[] = []
-    Object.entries(data).forEach(([tableName, items]) => {
-      const formattedName = client.name(tableName)
-
-      // @ts-expect-error `Items` is an array of any table items
-      const chunks = chunk(items, 25)
-
-      for (const chunk of chunks) {
-        const RequestItems: Record<string, WriteRequest[]> = {}
-        RequestItems[formattedName] = chunk.map((item) => {
-          return {
-            PutRequest: {
-              Item: marshall(item),
-            },
-          }
-        })
-
-        console.log('Seeding: ', formattedName)
-
-        batches.push(dynamoDB.send(new BatchWriteItemCommand({ RequestItems })))
-      }
-    })
-    await Promise.all(batches)
+    await Promise.all(
+      Object.entries(data).flatMap(([tableName, items]) => {
+        const formattedName = client.name(tableName)
+        // @ts-expect-error items can be any table item type
+        return chunk(items, 25).map((chunk) =>
+          dynamoDB.send(
+            new BatchWriteItemCommand({
+              RequestItems: {
+                [formattedName]: chunk.map((item) => ({
+                  PutRequest: {
+                    Item: marshall(item),
+                  },
+                })),
+              },
+            })
+          )
+        )
+      })
+    )
 
     console.log(`DynamoDB local tables seeded from ${seedFile}`)
   } catch (error) {
