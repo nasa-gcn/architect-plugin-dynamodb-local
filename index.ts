@@ -8,7 +8,7 @@ import _arcFunctions from '@architect/functions'
 import { marshall } from '@aws-sdk/util-dynamodb'
 import { access, constants, readFile } from 'node:fs/promises'
 import chunk from 'lodash/chunk.js'
-import dedent from 'ts-dedent'
+import { dedent } from 'ts-dedent'
 
 let local: Awaited<ReturnType<typeof launch>>
 
@@ -48,18 +48,21 @@ export const sandbox = {
       }
     }
 
-    for (const tableStream of inv['tables-streams']) {
-      const generatedDynamoTableName = client.name(tableStream.table)
-      await dynamodbClient.send(
-        new UpdateTableCommand({
-          TableName: generatedDynamoTableName,
-          StreamSpecification: {
-            StreamEnabled: true,
-            StreamViewType: 'NEW_AND_OLD_IMAGES',
-          },
-        })
-      )
-    }
+    await Promise.all(
+      // @ts-expect-error table has any type
+      inv['tables-streams'].map(({ table }) => {
+        const generatedDynamoTableName = client.name(table)
+        return dynamodbClient.send(
+          new UpdateTableCommand({
+            TableName: generatedDynamoTableName,
+            StreamSpecification: {
+              StreamEnabled: true,
+              StreamViewType: 'NEW_AND_OLD_IMAGES',
+            },
+          })
+        )
+      })
+    )
   },
   async end() {
     await local.stop()
