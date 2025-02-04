@@ -27,7 +27,7 @@
     "node": ">=20"
   },
   "dependencies": {
-    "@architect/functions": "^5.4.0",
+    "@architect/functions": "^8.1.7",
     "@aws-sdk/client-dynamodb": "^3.731.1",
     "@aws-sdk/client-dynamodb-streams": "^3.731.1",
     "@aws-sdk/client-ssm": "^3.731.1",
