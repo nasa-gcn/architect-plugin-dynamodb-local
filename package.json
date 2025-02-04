@@ -1,0 +1,87 @@
+{
+  "name": "architect-plugin-dynamodb-local",
+  "description": "Architect plugin for a local dynamodb instance",
+  "version": "1.0.0",
+  "repository": {
+    "type": "git",
+    "url": "github:nasa-gcn/architect-plugin-dynamodb-local"
+  },
+  "license": "Apache-2.0",
+  "contributors": [
+    {
+      "name": "Dakota Dutko",
+      "email": "dakota.c.dutko@nasa.gov"
+    }
+  ],
+  "type": "module",
+  "files": [
+    "index.js"
+  ],
+  "scripts": {
+    "prepare:husky": "husky",
+    "prepare:esbuild": "esbuild index.ts --bundle --packages=external --outfile=index.js --platform=node --format=esm --tree-shaking=true",
+    "prepare": "run-p prepare:*",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@architect/functions": "^5.4.0",
+    "@aws-sdk/client-dynamodb": "^3.731.1",
+    "@aws-sdk/client-dynamodb-streams": "^3.731.1",
+    "@aws-sdk/client-ssm": "^3.731.1",
+    "@aws-sdk/lib-dynamodb": "^3.731.1",
+    "dockerode": "^4.0.0",
+    "lodash": "^4.17.21",
+    "ts-dedent": "^2.2.0",
+    "wait-port": "^1.0.4"
+  },
+  "devDependencies": {
+    "@nasa-gcn/eslint-config-gitignore": "^0.0.2",
+    "@tsconfig/node14": "^14.1.2",
+    "@types/dockerode": "^3.3.23",
+    "@types/lodash": "^4.17.15",
+    "@types/node": "^22.2.0",
+    "@typescript-eslint/eslint-plugin": "^5.53.0",
+    "esbuild": "^0.24.0",
+    "eslint": "^8.34.0",
+    "eslint-config-prettier": "^9.1.0",
+    "husky": "^9.1.0",
+    "lint-staged": "^15.2.7",
+    "npm-run-all": "^4.1.5",
+    "prettier": "^3.0.0",
+    "typescript": "^5.7.2"
+  },
+  "prettier": {
+    "semi": false,
+    "singleQuote": true,
+    "trailingComma": "es5"
+  },
+  "eslintConfig": {
+    "env": {
+      "es2019": true,
+      "node": true
+    },
+    "extends": [
+      "eslint:recommended",
+      "@nasa-gcn/eslint-config-gitignore",
+      "prettier"
+    ],
+    "overrides": [
+      {
+        "files": "*.ts",
+        "extends": [
+          "plugin:@typescript-eslint/recommended"
+        ],
+        "parser": "@typescript-eslint/parser",
+        "plugins": [
+          "@typescript-eslint"
+        ]
+      }
+    ],
+    "parserOptions": {
+      "sourceType": "module"
+    }
+  }
+}
