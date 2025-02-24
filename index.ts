@@ -1,3 +1,11 @@
+/*!
+ * Copyright © 2023 United States Government as represented by the
+ * Administrator of the National Aeronautics and Space Administration.
+ * All Rights Reserved.
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 import { launch } from './run.js'
 import {
   BatchWriteItemCommand,
@@ -21,6 +29,13 @@ export const deploy = {
 export const sandbox = {
   // @ts-expect-error: The Architect plugins API has no type definitions.
   async start({ inventory: { inv }, arc }) {
+    if (!process.env.ARC_DB_EXTERNAL) {
+      console.log(
+        'ARC_DB_EXTERNAL is not set. To use the architect-plugin-dynamodb-local plugin, set this value to true in your .env file. Local dynamodb will use the sandbox setting'
+      )
+      return
+    }
+
     const dynamodbClient = new DynamoDBClient({
       region: inv.aws.region,
       endpoint: `http://localhost:${process.env.ARC_TABLES_PORT}`,
