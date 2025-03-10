@@ -20,6 +20,7 @@ if (command === 'launch-ddb-local-docker-subprocess') {
   try {
     container = await createDdbContainer(port)
   } catch (error) {
+    console.error(error)
     // Fix for Windows, containers exit, but do not get removed properly.
     console.log('\nExisting container, removing and recreating')
     const containers = await docker.listContainers({
