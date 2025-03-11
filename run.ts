@@ -49,6 +49,7 @@ export async function launch() {
         if (ddbPing.TableNames) dynamodbReady = true
       } catch (e) {
         console.log('table connection not ready, trying again')
+        await new Promise((f) => setTimeout(f, 500))
       }
     }
   } catch (e) {
