@@ -49,7 +49,11 @@ export const sandbox = {
         requestTimeout: 10_000,
         httpsAgent: { maxSockets: 500 }, // Increased from default to allow for higher throughput
       },
-      credentials,
+      credentials: {
+        // Any credentials can be provided for local
+        accessKeyId: 'local-db',
+        secretAccessKey: 'random-any-string',
+      },
     })
     const seedFile = arc['architect-plugin-dynamodb-local'].find(
       (item: string[]) => item[0] == 'seedFile'
