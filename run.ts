@@ -9,12 +9,8 @@
 import waitPort from 'wait-port'
 import { UnexpectedResolveError } from './promises.js'
 import { launchDocker, removeContainer } from './runDocker.js'
-import { execSync } from 'node:child_process'
-import {
-  DynamoDB,
-  DynamoDBClient,
-  ListTablesCommand,
-} from '@aws-sdk/client-dynamodb'
+import { DynamoDBClient, ListTablesCommand } from '@aws-sdk/client-dynamodb'
+import { credentials } from './index'
 
 export type LauncherFunction<T = object> = (
   props: T & {
@@ -42,7 +38,10 @@ export async function launch() {
   try {
     await waitPort({ port })
     let dynamodbReady = false
-    const ddbClient = new DynamoDBClient({ endpoint: url })
+    const ddbClient = new DynamoDBClient({
+      endpoint: url,
+      credentials,
+    })
     while (!dynamodbReady) {
       try {
         const ddbPing = await ddbClient.send(new ListTablesCommand({}))

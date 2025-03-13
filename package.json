@@ -1,7 +1,7 @@
 {
   "name": "@nasa-gcn/architect-plugin-dynamodb-local",
   "description": "Architect plugin for a local dynamodb instance",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "repository": {
     "type": "git",
     "url": "github:nasa-gcn/architect-plugin-dynamodb-local"

@@ -20,6 +20,12 @@ import { dedent } from 'ts-dedent'
 
 let local: Awaited<ReturnType<typeof launch>>
 
+export const credentials = {
+  // Any credentials can be provided for local
+  accessKeyId: 'local-db',
+  secretAccessKey: 'random-any-string',
+}
+
 export const deploy = {
   async services() {
     if (process.env.ARC_DB_EXTERNAL) local = await launch()
@@ -43,6 +49,7 @@ export const sandbox = {
         requestTimeout: 10_000,
         httpsAgent: { maxSockets: 500 }, // Increased from default to allow for higher throughput
       },
+      credentials,
     })
     const seedFile = arc['architect-plugin-dynamodb-local'].find(
       (item: string[]) => item[0] == 'seedFile'
