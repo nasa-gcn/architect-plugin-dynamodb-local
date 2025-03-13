@@ -10,6 +10,8 @@ This can be used alongside other plugins such as [@hicksy/arc-plugin-sandbox-str
 
 - Docker installed and running on your system.
 - Node.js (if this project is built as a Node.js tool).
+- A credential file as defined at https://arc.codes/docs/en/guides/developer-experience/create-aws-credentials
+  - Note: Any credentials will be accepted for local development, something just needs to be present, or there will be errors from the sandbox functions that try to populate the database.
 
 ## Usage
 
@@ -19,21 +21,21 @@ This can be used alongside other plugins such as [@hicksy/arc-plugin-sandbox-str
 npm install -D @nasa-gcn/architect-plugin-dynamodb-local
 ```
 
-1. In your `.env` add the following:
+2. In your `.env` add the following:
 
 ```
 ARC_TABLES_PORT=8000
 ARC_DB_EXTERNAL=true
 ```
 
-1. Add the following to your project's `app.arc` configuration file:
+3. Add the following to your project's `app.arc` configuration file:
 
 ```
 @plugins
 nasa-gcn/architect-plugin-dynamodb-local
 ```
 
-1. Seeding the database (optional):
+4. Seeding the database (optional):
 
 ```
 @architect-plugin-dynamodb-local
