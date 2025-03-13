@@ -11,7 +11,7 @@ This can be used alongside other plugins such as [@hicksy/arc-plugin-sandbox-str
 - Docker installed and running on your system.
 - Node.js (if this project is built as a Node.js tool).
 - A credential file as defined at https://arc.codes/docs/en/guides/developer-experience/create-aws-credentials
-  - Note: Any credentials will be accepted for local development, something just needs to be present, or there will be errors from the sandbox functions that try to populate the database.
+  - Note: Any credentials will be accepted for local development something just needs to be present, or there will be errors from the sandbox functions that try to populate the database.
 
 ## Usage
 
