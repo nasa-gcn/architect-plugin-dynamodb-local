@@ -45,7 +45,8 @@ export async function launch() {
         const ddbPing = await ddbClient.send(new ListTablesCommand({}))
         if (ddbPing.TableNames) dynamodbReady = true
       } catch (e) {
-        console.log(e, ', table connection not ready, trying again')
+        if (e instanceof Error)
+          console.log(e.name, ', table connection not ready, trying again')
         await new Promise((f) => setTimeout(f, 1000))
       }
     }
