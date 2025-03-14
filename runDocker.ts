@@ -9,6 +9,7 @@
 import Dockerode, { Container } from 'dockerode'
 import { fork } from 'node:child_process'
 import { LauncherFunction } from './run.js'
+import { promisify } from 'node:util'
 
 const [, , command, jsonifiedArgs] = process.argv
 const docker = new Dockerode({ protocol: 'http' })
@@ -80,29 +81,23 @@ export async function removeContainer(containerId: string) {
 }
 
 async function pullImage(imageName: string) {
-  console.log(`Checking for and pulling ${imageName}`)
-  await new Promise((resolve, reject) =>
-    docker.pull(
-      imageName,
-      (pullError: Error, stream: NodeJS.ReadableStream) => {
-        docker.modem.followProgress(stream, onFinished)
-        function onFinished(err: Error | null, output: unknown[]) {
-          if (!err) {
-            console.log(output)
-            resolve(true)
-            return
-          }
-          reject(err)
-        }
+  console.log(`Checking for and pulling ${imageName}. This may take a moment`)
+  const pull = promisify(docker.pull.bind(docker))
+  const stream = (await pull(imageName)) as NodeJS.ReadableStream
+
+  await new Promise<void>((resolve, reject) => {
+    docker.modem.followProgress(stream, (err, output) => {
+      if (err) reject(err)
+      else {
+        console.log(output)
+        resolve()
       }
-    )
-  )
+    })
+  })
   console.log('Done')
 }
 
 async function createDdbContainer(port: number) {
-  const imageInfo = await docker.getImage(imageName).inspect()
-  console.log(`Image "${imageName}" exists:`, imageInfo)
   await pullImage(imageName)
 
   return await docker.createContainer({
