@@ -9,9 +9,11 @@
 import Dockerode, { Container } from 'dockerode'
 import { fork } from 'node:child_process'
 import { LauncherFunction } from './run.js'
+import { promisify } from 'node:util'
 
 const [, , command, jsonifiedArgs] = process.argv
 const docker = new Dockerode({ protocol: 'http' })
+const imageName = 'amazon/dynamodb-local:latest'
 
 let containerId = ''
 if (command === 'launch-ddb-local-docker-subprocess') {
@@ -78,9 +80,17 @@ export async function removeContainer(containerId: string) {
   await docker.getContainer(containerId).remove()
 }
 
+async function pullImage(imageName: string) {
+  console.log(`Checking for and pulling ${imageName}. This may take a moment`)
+  await promisify(docker.modem.followProgress)(await docker.pull(imageName))
+  console.log('Done')
+}
+
 async function createDdbContainer(port: number) {
+  await pullImage(imageName)
+
   return await docker.createContainer({
-    Image: 'amazon/dynamodb-local:latest',
+    Image: imageName,
     name: 'dynamodb-local',
     Cmd: ['-jar', 'DynamoDBLocal.jar', '-sharedDb', '-dbPath', '/tmp/'],
     ExposedPorts: {
