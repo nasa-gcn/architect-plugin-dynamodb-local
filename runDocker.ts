@@ -82,18 +82,7 @@ export async function removeContainer(containerId: string) {
 
 async function pullImage(imageName: string) {
   console.log(`Checking for and pulling ${imageName}. This may take a moment`)
-  const pull = promisify(docker.pull.bind(docker))
-  const stream = (await pull(imageName)) as NodeJS.ReadableStream
-
-  await new Promise<void>((resolve, reject) => {
-    docker.modem.followProgress(stream, (err, output) => {
-      if (err) reject(err)
-      else {
-        console.log(output)
-        resolve()
-      }
-    })
-  })
+  await promisify(docker.modem.followProgress)(await docker.pull(imageName))
   console.log('Done')
 }
 
