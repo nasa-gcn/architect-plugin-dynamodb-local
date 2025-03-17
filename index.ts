@@ -72,7 +72,7 @@ export const sandbox = {
 
     await Promise.all(
       // @ts-expect-error table has any type
-      inv['tables-streams'].map(({ table }) => {
+      (inv['tables-streams'] ?? []).map(({ table }) => {
         const generatedDynamoTableName = client.name(table)
         return dynamodbClient.send(
           new UpdateTableCommand({
