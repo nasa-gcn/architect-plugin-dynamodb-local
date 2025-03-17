@@ -22,8 +22,8 @@ let local: Awaited<ReturnType<typeof launch>>
 
 export const credentials = {
   // Any credentials can be provided for local
-  accessKeyId: 'local-db',
-  secretAccessKey: 'random-any-string',
+  accessKeyId: 'localDb',
+  secretAccessKey: 'randomAnyString',
 }
 
 export const deploy = {
