@@ -14,7 +14,6 @@ import { credentials } from './index'
 
 export type LauncherFunction<T = object> = (
   props: T & {
-    options: string[]
     port: number
   }
 ) => Promise<{
@@ -26,10 +25,7 @@ export async function launch() {
   const port = 8000
   const url = `http://localhost:${port}`
 
-  const options = [`http.port=${port}`, 'discovery.type=single-node']
-
   const props = {
-    options,
     port,
   }
   console.log('Launching Docker...')

@@ -50,10 +50,9 @@ if (command === 'launch-ddb-local-docker-subprocess') {
   })
 }
 
-export const launchDocker: LauncherFunction = async ({ port, options }) => {
+export const launchDocker: LauncherFunction = async ({ port }) => {
   const argv = {
     port,
-    options,
   }
   const subprocess = fork(new URL(import.meta.url), [
     'launch-ddb-local-docker-subprocess',
