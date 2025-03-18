@@ -21,8 +21,7 @@ export type LauncherFunction<T = object> = (
   waitUntilStopped: () => Promise<void>
 }>
 
-export async function launch() {
-  const port = 8000
+export async function launch(port: number) {
   const url = `http://localhost:${port}`
 
   const props = {

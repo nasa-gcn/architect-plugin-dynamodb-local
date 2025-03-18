@@ -26,16 +26,33 @@ export const credentials = {
   secretAccessKey: 'randomAnyString',
 }
 
+// @ts-expect-error: The Architect plugins API has no type definitions.
+function isEnabled(inv) {
+  return Boolean(
+    inv._project.preferences?.sandbox['external-db'] ||
+      process.env.ARC_DB_EXTERNAL
+  )
+}
+
+// @ts-expect-error: The Architect plugins API has no type definitions.
+function getPort(inv) {
+  return (
+    inv._project.preferences?.sandbox.ports.tables ||
+    Number(process.env.ARC_TABLES_PORT)
+  )
+}
+
 export const deploy = {
-  async services() {
-    if (process.env.ARC_DB_EXTERNAL) local = await launch()
+  // @ts-expect-error: The Architect plugins API has no type definitions.
+  async services({ inventory: { inv } }) {
+    if (isEnabled(inv)) local = await launch(getPort(inv))
   },
 }
 
 export const sandbox = {
   // @ts-expect-error: The Architect plugins API has no type definitions.
   async start({ inventory: { inv }, arc }) {
-    if (!process.env.ARC_DB_EXTERNAL) {
+    if (!isEnabled(inv)) {
       console.log(
         'ARC_DB_EXTERNAL is not set. To use the architect-plugin-dynamodb-local plugin, set this value to true in your .env file. Local dynamodb will use the sandbox setting'
       )
@@ -44,7 +61,7 @@ export const sandbox = {
 
     const dynamodbClient = new DynamoDBClient({
       region: inv.aws.region,
-      endpoint: `http://localhost:${process.env.ARC_TABLES_PORT}`,
+      endpoint: local.url,
       requestHandler: {
         requestTimeout: 10_000,
         httpsAgent: { maxSockets: 500 }, // Increased from default to allow for higher throughput
