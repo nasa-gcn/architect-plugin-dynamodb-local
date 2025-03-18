@@ -29,7 +29,7 @@ export const credentials = {
 // @ts-expect-error: The Architect plugins API has no type definitions.
 function isEnabled(inv) {
   return Boolean(
-    inv._project.preferences?.sandbox['external-db'] ||
+    inv._project.preferences?.sandbox?.['external-db'] ||
       process.env.ARC_DB_EXTERNAL
   )
 }
@@ -37,7 +37,7 @@ function isEnabled(inv) {
 // @ts-expect-error: The Architect plugins API has no type definitions.
 function getPort(inv) {
   return (
-    inv._project.preferences?.sandbox.ports.tables ||
+    inv._project.preferences?.sandbox?.ports?.tables ||
     Number(process.env.ARC_TABLES_PORT)
   )
 }
@@ -59,6 +59,7 @@ export const sandbox = {
       return
     }
 
+    console.log('Sandbox start')
     const dynamodbClient = new DynamoDBClient({
       region: inv.aws.region,
       endpoint: local.url,
