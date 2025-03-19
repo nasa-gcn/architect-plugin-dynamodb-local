@@ -7,10 +7,12 @@
  */
 
 import waitPort from 'wait-port'
-import { UnexpectedResolveError } from './promises.js'
+import { sleep, UnexpectedResolveError } from './promises.js'
 import { launchDocker, removeContainer } from './runDocker.js'
 import { DynamoDBClient, ListTablesCommand } from '@aws-sdk/client-dynamodb'
 import { credentials } from './index'
+//@ts-expect-error: no type definitions
+import { updater } from '@architect/utils'
 
 export type LauncherFunction<T = object> = (
   props: T & {
@@ -22,28 +24,30 @@ export type LauncherFunction<T = object> = (
 }>
 
 export async function launch(port: number) {
+  const update = updater('DynamoDB Local')
   const url = `http://localhost:${port}`
 
   const props = {
     port,
   }
-  console.log('Launching Docker...')
+  update.start("Launching Docker container")
   const { kill, waitUntilStopped } = await launchDocker(props)
-  console.log('Launched: ')
+  update.status(`Waiting for connection on port ${port}`)
   try {
-    await waitPort({ port })
+    await waitPort({ port, output: 'silent' })
     let dynamodbReady = false
     const ddbClient = new DynamoDBClient({
       endpoint: url,
       credentials,
     })
+    update.status(`Waiting for DynamoDB to be up`)
     while (!dynamodbReady) {
       try {
         const ddbPing = await ddbClient.send(new ListTablesCommand({}))
         if (ddbPing.TableNames) dynamodbReady = true
       } catch (e) {
-        console.log(e, ', table connection not ready, trying again')
-        await new Promise((f) => setTimeout(f, 1000))
+        update.status(e, ', table connection not ready, trying again')
+        await sleep(1000)
       }
     }
   } catch (e) {
@@ -53,6 +57,7 @@ export async function launch(port: number) {
       throw e
     }
   }
+  update.done("DynamoDB is up!")
 
   return {
     url,
@@ -62,7 +67,6 @@ export async function launch(port: number) {
       await waitUntilStopped()
       console.log('Removing container: ', containerId)
       await removeContainer(containerId)
-      console.log('Removing temporary directory')
     },
   }
 }

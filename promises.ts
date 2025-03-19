@@ -12,3 +12,7 @@ export async function neverResolve<T>(promise: Promise<T>) {
   await promise
   throw new UnexpectedResolveError('promise resolved unexpectedly')
 }
+
+export function sleep(millis: number) {
+  return new Promise((resolve) => setTimeout(resolve, millis))
+}
