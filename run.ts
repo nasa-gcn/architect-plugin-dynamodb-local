@@ -5,14 +5,13 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-
-import waitPort from 'wait-port'
+import { credentials } from './index'
 import { sleep, UnexpectedResolveError } from './promises.js'
 import { launchDocker, removeContainer } from './runDocker.js'
-import { DynamoDBClient, ListTablesCommand } from '@aws-sdk/client-dynamodb'
-import { credentials } from './index'
 //@ts-expect-error: no type definitions
 import { updater } from '@architect/utils'
+import { DynamoDBClient, ListTablesCommand } from '@aws-sdk/client-dynamodb'
+import waitPort from 'wait-port'
 
 export type LauncherFunction<T = object> = (
   props: T & {
@@ -30,7 +29,7 @@ export async function launch(port: number) {
   const props = {
     port,
   }
-  update.start("Launching Docker container")
+  update.start('Launching Docker container')
   const { kill, waitUntilStopped } = await launchDocker(props)
   update.status(`Waiting for connection on port ${port}`)
   try {
@@ -57,7 +56,7 @@ export async function launch(port: number) {
       throw e
     }
   }
-  update.done("DynamoDB is up!")
+  update.done('DynamoDB is up!')
 
   return {
     url,

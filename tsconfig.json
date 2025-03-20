@@ -5,8 +5,6 @@
     "moduleResolution": "node",
     "esModuleInterop": true,
     "strict": true,
-    "types": [
-      "@types/node",
-    ],
+    "types": ["@types/node"]
   }
 }

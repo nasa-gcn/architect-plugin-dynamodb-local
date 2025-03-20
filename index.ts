@@ -5,20 +5,19 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-
 import { launch } from './run.js'
-import { DynamoDBClient, UpdateTableCommand } from '@aws-sdk/client-dynamodb'
 import _arcFunctions from '@architect/functions'
-import { NativeAttributeValue } from '@aws-sdk/util-dynamodb'
-import { access, constants, readFile } from 'node:fs/promises'
-import chunk from 'lodash/chunk.js'
-import { dedent } from 'ts-dedent'
 //@ts-expect-error: no type definitions
 import { updater } from '@architect/utils'
+import { DynamoDBClient, UpdateTableCommand } from '@aws-sdk/client-dynamodb'
 import {
   BatchWriteCommand,
   DynamoDBDocumentClient,
 } from '@aws-sdk/lib-dynamodb'
+import { NativeAttributeValue } from '@aws-sdk/util-dynamodb'
+import chunk from 'lodash/chunk.js'
+import { access, constants, readFile } from 'node:fs/promises'
+import { dedent } from 'ts-dedent'
 
 let local: Awaited<ReturnType<typeof launch>>
 
