@@ -5,11 +5,24 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-import { launch } from './run.js'
+import { periodically } from './promises.js'
+import { launch } from './run'
+import { TableStreamItem } from './types.js'
 import _arcFunctions from '@architect/functions'
 //@ts-expect-error: no type definitions
 import { updater } from '@architect/utils'
-import { DynamoDBClient, UpdateTableCommand } from '@aws-sdk/client-dynamodb'
+import {
+  DescribeTableCommand,
+  DynamoDBClient,
+  UpdateTableCommand,
+} from '@aws-sdk/client-dynamodb'
+import {
+  DescribeStreamCommand,
+  DynamoDBStreamsClient,
+  GetRecordsCommand,
+  GetShardIteratorCommand,
+  TrimmedDataAccessException,
+} from '@aws-sdk/client-dynamodb-streams'
 import {
   BatchWriteCommand,
   DynamoDBDocumentClient,
@@ -20,6 +33,15 @@ import { access, constants, readFile } from 'node:fs/promises'
 import { dedent } from 'ts-dedent'
 
 let local: Awaited<ReturnType<typeof launch>>
+
+type ShardItem = {
+  ShardIterator: string
+}
+
+let dynamoDbStreamsLoop: Promise<void>
+let abortController: AbortController
+
+const shardMap: { [key: string]: ShardItem[] } = {}
 
 export const credentials = {
   // Any credentials can be provided for local
@@ -52,7 +74,7 @@ export const deploy = {
 
 export const sandbox = {
   // @ts-expect-error: The Architect plugins API has no type definitions.
-  async start({ inventory: { inv }, arc }) {
+  async start({ inventory: { inv }, arc, invoke }) {
     if (!isEnabled(inv)) {
       console.log(
         'ARC_DB_EXTERNAL is not set. To use the architect-plugin-dynamodb-local plugin, set this value to true in your .env file. Local dynamodb will use the sandbox setting'
@@ -76,23 +98,94 @@ export const sandbox = {
     )[1]
     const client = await _arcFunctions.tables()
     if (seedFile) await seedDb(seedFile, dynamodbClient)
-
-    await Promise.all(
-      // @ts-expect-error table has any type
-      (inv['tables-streams'] ?? []).map(({ table }) =>
-        dynamodbClient.send(
-          new UpdateTableCommand({
-            TableName: client.name(table),
-            StreamSpecification: {
-              StreamEnabled: true,
-              StreamViewType: 'NEW_AND_OLD_IMAGES',
-            },
-          })
-        )
+    const tableStreams: TableStreamItem[] = inv['tables-streams']
+    abortController = new AbortController()
+    if (tableStreams?.length) {
+      const ddbStreamsClient = new DynamoDBStreamsClient({
+        region: inv.aws.region,
+        endpoint: local.url,
+        credentials,
+      })
+      // Init table streams for those defined
+      await Promise.all(
+        tableStreams
+          .map(({ table }) => table)
+          .filter(
+            (item: string, index: number, tableNames: string[]) =>
+              tableNames.indexOf(item) === index
+          )
+          .map((table: string) =>
+            dynamodbClient.send(
+              new UpdateTableCommand({
+                TableName: client.name(table),
+                StreamSpecification: {
+                  StreamEnabled: true,
+                  StreamViewType: 'NEW_AND_OLD_IMAGES',
+                },
+              })
+            )
+          )
       )
-    )
+      // Reset Stream defaults
+      for (const arcStream of tableStreams) {
+        shardMap[arcStream.table] = []
+        await resetTableStreams(
+          dynamodbClient,
+          ddbStreamsClient,
+          arcStream.table
+        )
+      }
+
+      dynamoDbStreamsLoop = periodically(
+        () => streamLoop(ddbStreamsClient),
+        2000,
+        abortController.signal
+      )
+    }
+
+    async function streamLoop(ddbStreamsClient: DynamoDBStreamsClient) {
+      for (const key of Object.keys(shardMap)) {
+        if (shardMap[key].length) {
+          const shardItem = shardMap[key].pop()
+          if (!shardItem) continue
+          try {
+            const event = await ddbStreamsClient.send(
+              new GetRecordsCommand({
+                ShardIterator: shardItem.ShardIterator,
+              })
+            )
+            if (event.Records?.length) {
+              tableStreams
+                .filter((x) => x.table === key)
+                .forEach((x) => {
+                  invoke({
+                    pragma: 'tables-streams',
+                    name: x.name,
+                    payload: event,
+                  })
+                })
+            }
+
+            if (event.NextShardIterator) {
+              shardMap[key].push({
+                ShardIterator: event.NextShardIterator,
+              })
+            }
+          } catch (error) {
+            if (error instanceof TrimmedDataAccessException) {
+              console.log(error.name)
+              await resetTableStreams(dynamodbClient, ddbStreamsClient, key)
+            } else {
+              throw error
+            }
+          }
+        }
+      }
+    }
   },
   async end() {
+    abortController.abort()
+    await dynamoDbStreamsLoop
     await local.stop()
   },
 }
@@ -147,5 +240,44 @@ async function seedDb(seedFile: string, dynamoDB: DynamoDBClient) {
     update.done(`Initialized database from "${seedFile}"`)
   } catch (error) {
     update.err(error)
+  }
+}
+
+async function resetTableStreams(
+  ddbClient: DynamoDBClient,
+  ddbStreamsClient: DynamoDBStreamsClient,
+  arcTableName: string
+) {
+  const db = await _arcFunctions.tables()
+  const tableName = db.name(arcTableName)
+  const table = await ddbClient.send(
+    new DescribeTableCommand({
+      TableName: tableName,
+    })
+  )
+  const stream = await ddbStreamsClient.send(
+    new DescribeStreamCommand({
+      StreamArn: table.Table?.LatestStreamArn,
+    })
+  )
+  const shardArray = stream.StreamDescription?.Shards
+  if (shardArray && table.Table?.LatestStreamArn) {
+    for (const shard of shardArray) {
+      if (shard.ShardId) {
+        const ShardIterator = (
+          await ddbStreamsClient.send(
+            new GetShardIteratorCommand({
+              StreamArn: table.Table.LatestStreamArn,
+              ShardIteratorType: 'LATEST',
+              ShardId: shard.ShardId,
+            })
+          )
+        ).ShardIterator
+
+        if (ShardIterator) {
+          shardMap[arcTableName] = [{ ShardIterator }]
+        }
+      }
+    }
   }
 }

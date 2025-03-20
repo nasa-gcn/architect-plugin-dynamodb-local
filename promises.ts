@@ -8,11 +8,41 @@
 
 export class UnexpectedResolveError extends Error {}
 
-export async function neverResolve<T>(promise: Promise<T>) {
-  await promise
-  throw new UnexpectedResolveError('promise resolved unexpectedly')
+export function sleep(millis: number, signal?: AbortSignal) {
+  return new Promise<void>((resolve) => {
+    function done() {
+      clearTimeout(timeoutHandle)
+      signal?.removeEventListener('abort', done)
+      resolve()
+    }
+    signal?.addEventListener('abort', done)
+    const timeoutHandle = setTimeout(done, millis)
+  })
 }
 
-export function sleep(millis: number) {
-  return new Promise((resolve) => setTimeout(resolve, millis))
+export function periodically(
+  func: () => Promise<unknown>,
+  millis: number,
+  signal?: AbortSignal
+) {
+  let running = true
+
+  function handleAbort() {
+    running = false
+  }
+
+  signal?.addEventListener('abort', handleAbort)
+
+  async function run() {
+    try {
+      while (running) {
+        await func()
+        await sleep(millis, signal)
+      }
+    } finally {
+      signal?.removeEventListener('abort', handleAbort)
+    }
+  }
+
+  return run()
 }
