@@ -5,10 +5,9 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-
+import { LauncherFunction } from './run.js'
 import Dockerode, { Container } from 'dockerode'
 import { fork } from 'node:child_process'
-import { LauncherFunction } from './run.js'
 import { promisify } from 'node:util'
 
 const [, , command, jsonifiedArgs] = process.argv
