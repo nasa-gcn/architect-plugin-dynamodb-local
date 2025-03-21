@@ -5,7 +5,6 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-import { sleep } from './promises.js'
 import { launch } from './run.js'
 import _arcFunctions from '@architect/functions'
 //@ts-expect-error: no type definitions
@@ -96,28 +95,28 @@ export const sandbox = {
     if (seedFile) await seedDb(seedFile, dynamodbClient)
 
     const tableStreams = inv['tables-streams']
-    const ddbStreamsClient = new DynamoDBStreamsClient({
-      region: inv.aws.region,
-      endpoint: `http://localhost:${getPort(inv)}`,
-      credentials,
-    })
-    // Init table streams for those defined
-    await Promise.all(
-      // @ts-expect-error table has any type
-      (tableStreams ?? []).map(({ table }) =>
-        dynamodbClient.send(
-          new UpdateTableCommand({
-            TableName: client.name(table),
-            StreamSpecification: {
-              StreamEnabled: true,
-              StreamViewType: 'NEW_AND_OLD_IMAGES',
-            },
-          })
-        )
-      )
-    )
 
     if (tableStreams) {
+      const ddbStreamsClient = new DynamoDBStreamsClient({
+        region: inv.aws.region,
+        endpoint: local.url,
+        credentials,
+      })
+      // Init table streams for those defined
+      await Promise.all(
+        // @ts-expect-error table has any type
+        (tableStreams ?? []).map(({ table }) =>
+          dynamodbClient.send(
+            new UpdateTableCommand({
+              TableName: client.name(table),
+              StreamSpecification: {
+                StreamEnabled: true,
+                StreamViewType: 'NEW_AND_OLD_IMAGES',
+              },
+            })
+          )
+        )
+      )
       // Reset Stream defaults
       for (const arcStream of tableStreams) {
         shardMap[arcStream.table] = []
@@ -128,42 +127,43 @@ export const sandbox = {
         )
       }
 
-      // eslint-disable-next-line no-constant-condition
-      while (true) {
-        await sleep(2000)
-        for (const key of Object.keys(shardMap)) {
-          if (shardMap[key].length) {
-            const shardItem = shardMap[key].pop()
-            if (!shardItem) continue
-            try {
-              const event = await ddbStreamsClient.send(
-                new GetRecordsCommand({
-                  ShardIterator: shardItem.ShardIterator,
-                })
-              )
-              if (event.Records?.length) {
-                invoke({
-                  pragma: 'tables-streams',
-                  name: key,
-                  payload: event,
-                })
-              }
+      await streamLoop(ddbStreamsClient)
+    }
 
-              if (event.NextShardIterator) {
-                shardMap[key].push({
-                  ShardIterator: event.NextShardIterator,
-                })
-              }
-            } catch (error) {
-              if (error instanceof TrimmedDataAccessException) {
-                console.log(error.name)
-              }
-
-              await resetTableStreams(dynamodbClient, ddbStreamsClient, key)
+    async function streamLoop(ddbStreamsClient: DynamoDBStreamsClient) {
+      for (const key of Object.keys(shardMap)) {
+        if (shardMap[key].length) {
+          const shardItem = shardMap[key].pop()
+          if (!shardItem) continue
+          try {
+            const event = await ddbStreamsClient.send(
+              new GetRecordsCommand({
+                ShardIterator: shardItem.ShardIterator,
+              })
+            )
+            if (event.Records?.length) {
+              invoke({
+                pragma: 'tables-streams',
+                name: key,
+                payload: event,
+              })
             }
+
+            if (event.NextShardIterator) {
+              shardMap[key].push({
+                ShardIterator: event.NextShardIterator,
+              })
+            }
+          } catch (error) {
+            if (error instanceof TrimmedDataAccessException) {
+              console.log(error.name)
+            }
+
+            await resetTableStreams(dynamodbClient, ddbStreamsClient, key)
           }
         }
       }
+      setTimeout(() => streamLoop(ddbStreamsClient), 2000)
     }
   },
   async end() {
@@ -257,7 +257,7 @@ async function resetTableStreams(
 
         if (ShardIterator) {
           shardMap[arcTableName].push({
-            ShardIterator: ShardIterator,
+            ShardIterator,
           })
         }
       }
