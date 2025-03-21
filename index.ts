@@ -6,6 +6,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 import { launch } from './run.js'
+import { TableStreamItem } from './types.js'
 import _arcFunctions from '@architect/functions'
 //@ts-expect-error: no type definitions
 import { updater } from '@architect/utils'
@@ -96,9 +97,9 @@ export const sandbox = {
     const client = await _arcFunctions.tables()
     if (seedFile) await seedDb(seedFile, dynamodbClient)
 
-    const tableStreams = inv['tables-streams']
-
+    const tableStreams: TableStreamItem[] = inv['tables-streams']
     if (tableStreams?.length) {
+      continueProcessingLoop = true
       const ddbStreamsClient = new DynamoDBStreamsClient({
         region: inv.aws.region,
         endpoint: local.url,
@@ -106,18 +107,23 @@ export const sandbox = {
       })
       // Init table streams for those defined
       await Promise.all(
-        // @ts-expect-error table has any type
-        tableStreams.map(({ table }) =>
-          dynamodbClient.send(
-            new UpdateTableCommand({
-              TableName: client.name(table),
-              StreamSpecification: {
-                StreamEnabled: true,
-                StreamViewType: 'NEW_AND_OLD_IMAGES',
-              },
-            })
+        tableStreams
+          .map(({ table }) => table)
+          .filter(
+            (item: string, index: number, tableNames: string[]) =>
+              tableNames.indexOf(item) === index
           )
-        )
+          .map((table: string) =>
+            dynamodbClient.send(
+              new UpdateTableCommand({
+                TableName: client.name(table),
+                StreamSpecification: {
+                  StreamEnabled: true,
+                  StreamViewType: 'NEW_AND_OLD_IMAGES',
+                },
+              })
+            )
+          )
       )
       // Reset Stream defaults
       for (const arcStream of tableStreams) {
@@ -144,11 +150,15 @@ export const sandbox = {
               })
             )
             if (event.Records?.length) {
-              invoke({
-                pragma: 'tables-streams',
-                name: key,
-                payload: event,
-              })
+              tableStreams
+                .filter((x) => x.table === key)
+                .map((x) => {
+                  invoke({
+                    pragma: 'tables-streams',
+                    name: x.name,
+                    payload: event,
+                  })
+                })
             }
 
             if (event.NextShardIterator) {
