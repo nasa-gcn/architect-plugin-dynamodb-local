@@ -36,6 +36,8 @@ type ShardItem = {
   ShardIterator: string
 }
 
+let continueProcessingLoop = true
+
 const shardMap: { [key: string]: ShardItem[] } = {}
 
 export const credentials = {
@@ -96,7 +98,7 @@ export const sandbox = {
 
     const tableStreams = inv['tables-streams']
 
-    if (tableStreams) {
+    if (tableStreams?.length) {
       const ddbStreamsClient = new DynamoDBStreamsClient({
         region: inv.aws.region,
         endpoint: local.url,
@@ -105,7 +107,7 @@ export const sandbox = {
       // Init table streams for those defined
       await Promise.all(
         // @ts-expect-error table has any type
-        (tableStreams ?? []).map(({ table }) =>
+        tableStreams.map(({ table }) =>
           dynamodbClient.send(
             new UpdateTableCommand({
               TableName: client.name(table),
@@ -163,10 +165,12 @@ export const sandbox = {
           }
         }
       }
-      setTimeout(() => streamLoop(ddbStreamsClient), 2000)
+      if (continueProcessingLoop)
+        setTimeout(() => streamLoop(ddbStreamsClient), 2000)
     }
   },
   async end() {
+    continueProcessingLoop = false
     await local.stop()
   },
 }
