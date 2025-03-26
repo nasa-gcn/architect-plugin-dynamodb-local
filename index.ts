@@ -5,7 +5,8 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-import { launch } from './run.js'
+import { periodically } from './promises.js'
+import { launch } from './run'
 import { TableStreamItem } from './types.js'
 import _arcFunctions from '@architect/functions'
 //@ts-expect-error: no type definitions
@@ -37,9 +38,11 @@ type ShardItem = {
   ShardIterator: string
 }
 
-let continueProcessingLoop = true
+let dynamoDbStreamsLoop: Promise<void>, abortController: AbortController
 
 const shardMap: { [key: string]: ShardItem[] } = {}
+
+let continueProcessingLoop = false
 
 export const credentials = {
   // Any credentials can be provided for local
@@ -96,8 +99,8 @@ export const sandbox = {
     )[1]
     const client = await _arcFunctions.tables()
     if (seedFile) await seedDb(seedFile, dynamodbClient)
-
     const tableStreams: TableStreamItem[] = inv['tables-streams']
+    abortController = new AbortController()
     if (tableStreams?.length) {
       continueProcessingLoop = true
       const ddbStreamsClient = new DynamoDBStreamsClient({
@@ -135,10 +138,15 @@ export const sandbox = {
         )
       }
 
-      await streamLoop(ddbStreamsClient)
+      dynamoDbStreamsLoop = periodically(
+        () => streamLoop(ddbStreamsClient),
+        2000,
+        abortController.signal
+      )
     }
 
     async function streamLoop(ddbStreamsClient: DynamoDBStreamsClient) {
+      if (!continueProcessingLoop) return
       for (const key of Object.keys(shardMap)) {
         if (shardMap[key].length) {
           const shardItem = shardMap[key].pop()
@@ -175,12 +183,13 @@ export const sandbox = {
           }
         }
       }
-      if (continueProcessingLoop)
-        setTimeout(() => streamLoop(ddbStreamsClient), 2000)
+      setTimeout(() => streamLoop(ddbStreamsClient), 2000)
     }
   },
   async end() {
     continueProcessingLoop = false
+    abortController.abort()
+    await dynamoDbStreamsLoop
     await local.stop()
   },
 }
