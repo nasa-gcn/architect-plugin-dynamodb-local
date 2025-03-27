@@ -5,31 +5,44 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-import { LauncherFunction } from './run.js'
 import Dockerode, { Container } from 'dockerode'
-import { fork } from 'node:child_process'
-import { promisify } from 'node:util'
 
-const [, , command, jsonifiedArgs] = process.argv
-const docker = new Dockerode({ protocol: 'http' })
 const imageName = 'amazon/dynamodb-local:latest'
 
+export type HttpError = {
+  reason: string | undefined
+  statusCode: number
+  json: object
+}
+
+type LauncherFunction<T = object> = (
+  props: T & {
+    port: number
+  }
+) => Promise<{
+  kill: () => Promise<string>
+  containerId: string
+}>
+
 let containerId = ''
-if (command === 'launch-ddb-local-docker-subprocess') {
-  const { port } = JSON.parse(jsonifiedArgs)
+const docker = new Dockerode({ protocol: 'http' })
+
+export const launchDocker: LauncherFunction = async ({ port }) => {
   let container: Container
   try {
     container = await createDdbContainer(port)
   } catch (error) {
-    console.error(error)
-    // Fix for Windows, containers exit, but do not get removed properly.
-    console.log('\nExisting container, removing and recreating')
+    if ((error as HttpError).statusCode == 409) {
+      console.log('\nExisting container, removing and recreating')
+    } else {
+      console.log(error)
+    }
     const containers = await docker.listContainers({
       limit: 1,
       filters: '{"name": ["dynamodb-local"]}',
     })
     for (const existing of containers) {
-      if (existing.State !== 'exited') {
+      if (existing.State === 'running') {
         await docker.getContainer(existing.Id).kill()
       }
       await docker.getContainer(existing.Id).remove()
@@ -37,8 +50,10 @@ if (command === 'launch-ddb-local-docker-subprocess') {
     container = await createDdbContainer(port)
   }
   containerId = container.id
-  const stream = await container.attach({ stream: true, stderr: true })
-  stream.pipe(process.stderr)
+  let containerReady = false
+  while (!containerReady) {
+    containerReady = (await container.inspect()).State.Status === 'created'
+  }
   await container.start()
   const signals = ['message', 'SIGTERM', 'SIGINT']
   signals.forEach((signal) => {
@@ -47,40 +62,35 @@ if (command === 'launch-ddb-local-docker-subprocess') {
       await container.remove()
     })
   })
-}
 
-export const launchDocker: LauncherFunction = async ({ port }) => {
-  const argv = {
-    port,
-  }
-  const subprocess = fork(new URL(import.meta.url), [
-    'launch-ddb-local-docker-subprocess',
-    JSON.stringify(argv),
-  ])
   return {
     async kill() {
-      console.log('Killing Docker container')
-      subprocess.kill()
+      await docker.getContainer(containerId).stop()
       return containerId
     },
-    async waitUntilStopped() {
-      return new Promise((resolve) => {
-        subprocess.on('exit', () => {
-          console.log('Docker container exited')
-          resolve()
-        })
-      })
-    },
+    containerId,
   }
 }
 
 export async function removeContainer(containerId: string) {
-  await docker.getContainer(containerId).remove()
+  const container = docker.getContainer(containerId)
+  await container.remove()
 }
 
 async function pullImage(imageName: string) {
   console.log(`Checking for and pulling ${imageName}. This may take a moment`)
-  await promisify(docker.modem.followProgress)(await docker.pull(imageName))
+
+  try {
+    const stream = await docker.pull(imageName)
+    await new Promise((resolve, reject) => {
+      docker.modem.followProgress(stream, (err, res) =>
+        err ? reject(err) : resolve(res)
+      )
+    })
+  } catch (e) {
+    console.log(e)
+  }
+
   console.log('Done')
 }
 

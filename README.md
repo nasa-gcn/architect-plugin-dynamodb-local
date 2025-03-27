@@ -4,7 +4,9 @@ This is a plugin for a local DynamoDB instance using Docker.
 
 When you are using Architect's sandbox mode, the plugin starts a Docker container running the [`amazon/dynamodb-local:latest`](https://hub.docker.com/r/amazon/dynamodb-local) image.
 
-This can be used alongside other plugins such as [@hicksy/arc-plugin-sandbox-stream](https://github.com/hicksy/arc-plugin-sandbox-stream) to allow for more realistic debugging with `tables-streams`.
+If you have defined a `@tables-streams` section in your `app.arc` file, the respective streams will be enabled.
+
+There is an issue with the Docker image of DynamoDB local that causes a `TrimmedDataAccessException` error to be thrown on the first read. This problem lies deeper within DynamoDB and is out of the scope of this plugin. To handle this issue, there is a reset function that will trigger automatically. In practice, this means that the first invocation will fail (you will see a logged `TrimmedDataAccessException` message in your console), but the following invocations will work successfully.
 
 ## Prerequisites
 
@@ -19,21 +21,21 @@ This can be used alongside other plugins such as [@hicksy/arc-plugin-sandbox-str
 npm install -D @nasa-gcn/architect-plugin-dynamodb-local
 ```
 
-1. In your `.env` add the following:
+2. In your `.env` add the following:
 
 ```
 ARC_TABLES_PORT=8000
 ARC_DB_EXTERNAL=true
 ```
 
-1. Add the following to your project's `app.arc` configuration file:
+3. Add the following to your project's `app.arc` configuration file:
 
 ```
 @plugins
 nasa-gcn/architect-plugin-dynamodb-local
 ```
 
-1. Seeding the database (optional):
+4. Seeding the database (optional):
 
 ```
 @architect-plugin-dynamodb-local

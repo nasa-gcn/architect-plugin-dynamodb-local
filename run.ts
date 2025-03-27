@@ -11,29 +11,20 @@ import { launchDocker, removeContainer } from './runDocker.js'
 //@ts-expect-error: no type definitions
 import { updater } from '@architect/utils'
 import { DynamoDBClient, ListTablesCommand } from '@aws-sdk/client-dynamodb'
+import Dockerode from 'dockerode'
 import waitPort from 'wait-port'
-
-export type LauncherFunction<T = object> = (
-  props: T & {
-    port: number
-  }
-) => Promise<{
-  kill: () => Promise<string>
-  waitUntilStopped: () => Promise<void>
-}>
 
 export async function launch(port: number) {
   const update = updater('DynamoDB Local')
-  const url = `http://localhost:${port}`
-
+  const url = `http://0.0.0.0:${port}`
   const props = {
     port,
   }
   update.start('Launching Docker container')
-  const { kill, waitUntilStopped } = await launchDocker(props)
+  const { kill } = await launchDocker(props)
   update.status(`Waiting for connection on port ${port}`)
   try {
-    await waitPort({ port, output: 'silent' })
+    await waitPort({ port })
     let dynamodbReady = false
     const ddbClient = new DynamoDBClient({
       endpoint: url,
@@ -42,6 +33,7 @@ export async function launch(port: number) {
     update.status(`Waiting for DynamoDB to be up`)
     while (!dynamodbReady) {
       try {
+        update.status('Connecting...')
         const ddbPing = await ddbClient.send(new ListTablesCommand({}))
         if (ddbPing.TableNames) dynamodbReady = true
       } catch (e) {
@@ -53,9 +45,10 @@ export async function launch(port: number) {
     if (e instanceof UnexpectedResolveError) {
       throw new Error('Local DynamoDB instance terminated unexpectedly')
     } else {
-      throw e
+      console.error(e)
     }
   }
+
   update.done('DynamoDB is up!')
 
   return {
@@ -63,9 +56,21 @@ export async function launch(port: number) {
     port,
     async stop() {
       const containerId = await kill()
-      await waitUntilStopped()
-      console.log('Removing container: ', containerId)
+      await waitUntilStopped(containerId)
       await removeContainer(containerId)
     },
   }
+}
+
+async function waitUntilStopped(containerId: string) {
+  let stopped = false
+  const docker = new Dockerode()
+  while (!stopped) {
+    stopped =
+      (await docker.getContainer(containerId).inspect()).State.Status ===
+      'exited'
+  }
+  return new Promise<void>((resolve) => {
+    resolve()
+  })
 }
