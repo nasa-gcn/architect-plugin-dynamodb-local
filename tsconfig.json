@@ -3,6 +3,7 @@
     "target": "es2017",
     "module": "ESNext",
     "moduleResolution": "node",
+    "noEmit": true,
     "esModuleInterop": true,
     "strict": true,
     "types": ["@types/node"]
