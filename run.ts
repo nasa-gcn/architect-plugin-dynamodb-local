@@ -6,11 +6,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 import { credentials } from './index'
-import { sleep, UnexpectedResolveError } from './promises.js'
 import { launchDocker, removeContainer } from './runDocker.js'
 //@ts-expect-error: no type definitions
 import { updater } from '@architect/utils'
 import { DynamoDBClient, ListTablesCommand } from '@aws-sdk/client-dynamodb'
+import { sleep, UnexpectedResolveError } from '@nasa-gcn/architect-plugin-utils'
 import Dockerode from 'dockerode'
 import waitPort from 'wait-port'
 
