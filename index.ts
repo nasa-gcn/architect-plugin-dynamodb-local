@@ -5,7 +5,6 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-import { periodically } from './promises.js'
 import { launch } from './run'
 import { TableStreamItem } from './types.js'
 import _arcFunctions from '@architect/functions'
@@ -28,6 +27,7 @@ import {
   DynamoDBDocumentClient,
 } from '@aws-sdk/lib-dynamodb'
 import { NativeAttributeValue } from '@aws-sdk/util-dynamodb'
+import { periodically } from '@nasa-gcn/architect-plugin-utils'
 import chunk from 'lodash/chunk.js'
 import { access, constants, readFile } from 'node:fs/promises'
 import { dedent } from 'ts-dedent'
