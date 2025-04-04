@@ -6,6 +6,7 @@
     "noEmit": true,
     "esModuleInterop": true,
     "strict": true,
-    "types": ["@types/node"]
+    "types": ["@types/node"],
+    "resolveJsonModule": true
   }
 }

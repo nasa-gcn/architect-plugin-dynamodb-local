@@ -1,0 +1,8 @@
+{
+  "testTable": [
+    { "itemID": 1, "name": "first" },
+    { "itemID": 2, "name": "second" },
+    { "itemID": 3, "name": "third" },
+    { "itemID": 4, "name": "fourth" }
+  ]
+}
