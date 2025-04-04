@@ -15,3 +15,4 @@ testTable
 @plugins
 nasa-gcn/architect-plugin-dynamodb-local
   src ./index.js
+  
