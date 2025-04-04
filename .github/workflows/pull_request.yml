@@ -1,0 +1,12 @@
+name: Test
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+jobs:
+  node:
+    uses: nasa-gcn/.github/.github/workflows/node.yml@main
