@@ -267,7 +267,7 @@ async function resetTableStreams(
           await ddbStreamsClient.send(
             new GetShardIteratorCommand({
               StreamArn: table.Table.LatestStreamArn,
-              ShardIteratorType: 'TRIM_HORIZON',
+              ShardIteratorType: 'LATEST', //'TRIM_HORIZON',
               ShardId: shard.ShardId,
             })
           )
