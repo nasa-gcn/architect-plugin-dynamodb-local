@@ -10,3 +10,6 @@ on:
 jobs:
   node:
     uses: nasa-gcn/.github/.github/workflows/node.yml@main
+    with:
+      test-options: ''
+      docker: true
