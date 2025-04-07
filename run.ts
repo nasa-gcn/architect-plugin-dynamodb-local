@@ -62,7 +62,6 @@ export async function launch(port: number) {
 
   return {
     url,
-    port,
     async stop() {
       await kill()
       await waitUntilStopped()
