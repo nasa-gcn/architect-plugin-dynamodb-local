@@ -6,22 +6,31 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 import { credentials } from './index'
-import { launchDocker, removeContainer } from './runDocker.js'
 //@ts-expect-error: no type definitions
 import { updater } from '@architect/utils'
 import { DynamoDBClient, ListTablesCommand } from '@aws-sdk/client-dynamodb'
-import { sleep, UnexpectedResolveError } from '@nasa-gcn/architect-plugin-utils'
-import Dockerode from 'dockerode'
+import {
+  launchDockerSubprocess,
+  sleep,
+  UnexpectedResolveError,
+} from '@nasa-gcn/architect-plugin-utils'
 import waitPort from 'wait-port'
 
 export async function launch(port: number) {
   const update = updater('DynamoDB Local')
   const url = `http://0.0.0.0:${port}`
-  const props = {
-    port,
-  }
-  update.start('Launching Docker container')
-  const { kill } = await launchDocker(props)
+  const { kill, waitUntilStopped } = await launchDockerSubprocess({
+    Image: 'amazon/dynamodb-local',
+    Cmd: ['-jar', 'DynamoDBLocal.jar', '-sharedDb', '-dbPath', '/tmp/'],
+    ExposedPorts: {
+      '8000/tcp': {},
+    },
+    HostConfig: {
+      PortBindings: {
+        [`${port}/tcp`]: [{ HostIp: '0.0.0.0', HostPort: `${port}` }],
+      },
+    },
+  })
   update.status(`Waiting for connection on port ${port}`)
   try {
     await waitPort({ port })
@@ -55,22 +64,8 @@ export async function launch(port: number) {
     url,
     port,
     async stop() {
-      const containerId = await kill()
-      await waitUntilStopped(containerId)
-      await removeContainer(containerId)
+      await kill()
+      await waitUntilStopped()
     },
   }
-}
-
-async function waitUntilStopped(containerId: string) {
-  let stopped = false
-  const docker = new Dockerode()
-  while (!stopped) {
-    stopped =
-      (await docker.getContainer(containerId).inspect()).State.Status ===
-      'exited'
-  }
-  return new Promise<void>((resolve) => {
-    resolve()
-  })
 }

@@ -33,8 +33,7 @@
     "@aws-sdk/client-dynamodb-streams": "^3.731.1",
     "@aws-sdk/client-ssm": "^3.731.1",
     "@aws-sdk/lib-dynamodb": "^3.731.1",
-    "@nasa-gcn/architect-plugin-utils": "^0.2.0",
-    "dockerode": "^4.0.0",
+    "@nasa-gcn/architect-plugin-utils": "^0.3.0",
     "lodash": "^4.17.21",
     "ts-dedent": "^2.2.0",
     "wait-port": "^1.0.4"
@@ -48,7 +47,6 @@
     "@trivago/prettier-plugin-sort-imports": "^5.2.2",
     "@tsconfig/node14": "^14.1.2",
     "@types/aws-lambda": "^8.10.147",
-    "@types/dockerode": "^3.3.23",
     "@types/lodash": "^4.17.15",
     "@types/node": "^22.2.0",
     "@typescript-eslint/eslint-plugin": "^5.53.0",
