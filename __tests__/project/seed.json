@@ -1,0 +1,25 @@
+{
+  "products": [
+    { "productName": "sonic-screwdriver", "productUnitPrice": 10 },
+    { "productName": "chameleon-circuit", "productUnitPrice": 30 },
+    { "productName": "psychic-paper", "productUnitPrice": 1 }
+  ],
+  "carts": [
+    {
+      "cartShopper": "the-doctor",
+      "cartProducts": [
+        { "productName": "sonic-screwdriver", "quantity": 2 },
+        { "productName": "chameleon-circuit", "quantity": 1 }
+      ],
+      "cartTotal": 50
+    },
+    {
+      "cartShopper": "the-master",
+      "cartProducts": [
+        { "productName": "sonic-screwdriver", "quantity": 1 },
+        { "productName": "psychic-paper", "quantit": 20 }
+      ],
+      "cartTotal": 15
+    }
+  ]
+}

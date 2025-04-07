@@ -1,4 +1,4 @@
-import { fetchRetry, sleep } from '@nasa-gcn/architect-plugin-utils'
+import { sleep } from '@nasa-gcn/architect-plugin-utils'
 import { ExecaError, execa } from 'execa'
 import assert from 'node:assert'
 import { dirname, join } from 'node:path'
@@ -54,7 +54,30 @@ describe('dynamodb-local stops on Ctrl-C', () => {
   })
 
   test('connection was alive', async () => {
-    const response = await fetchRetry('http://localhost:3333/')
+    let response, json
+
+    response = await fetch('http://localhost:3333/carts/the-doctor')
     assert(response.ok)
+    json = await response.json()
+    assert.strictEqual(json.cartTotal, 50)
+
+    // 50% off sale on sonic screwdrivers!
+    response = await fetch('http://localhost:3333/products/sonic-screwdriver', {
+      method: 'PUT',
+      body: JSON.stringify({
+        productName: 'sonic-screwdriver',
+        productUnitPrice: 5,
+      }),
+      headers: { 'Content-Type': 'application/json' },
+    })
+    assert(response.ok)
+
+    // Wait for tables-streams Lambda to run
+    await sleep(2000)
+
+    response = await fetch('http://localhost:3333/carts/the-doctor')
+    assert(response.ok)
+    json = await response.json()
+    assert.strictEqual(json.cartTotal, 40)
   })
 })

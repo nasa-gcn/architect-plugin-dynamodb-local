@@ -2,11 +2,22 @@
 project
 
 @http
-get /
+get /products/:productName
+put /products/:productName
+get /carts/:cartShopper
 
 @tables
-testTable
-  itemID *Number
+products
+  productName *String
+carts
+  cartShopper *String
+
+@tables-streams
+products
+  src src/tables-streams/products
+
+@architect-plugin-dynamodb-local
+seedFile seed.json
 
 @plugins
 nasa-gcn/architect-plugin-dynamodb-local
