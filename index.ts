@@ -8,7 +8,6 @@
 import { launch } from './run'
 import { TableStreamItem } from './types.js'
 import _arcFunctions from '@architect/functions'
-//@ts-expect-error: no type definitions
 import { updater } from '@architect/utils'
 import {
   DescribeTableCommand,
