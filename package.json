@@ -34,8 +34,7 @@
     "@aws-sdk/lib-dynamodb": "^3.731.1",
     "@nasa-gcn/architect-plugin-utils": "^0.3.0",
     "lodash": "^4.17.21",
-    "ts-dedent": "^2.2.0",
-    "wait-port": "^1.0.4"
+    "ts-dedent": "^2.2.0"
   },
   "devDependencies": {
     "@architect/architect": "^11.2.2",
