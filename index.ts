@@ -11,7 +11,7 @@ import _arcFunctions from '@architect/functions'
 import { updater } from '@architect/utils'
 import {
   DescribeTableCommand,
-  DynamoDBClient,
+  type DynamoDBClient,
   UpdateTableCommand,
 } from '@aws-sdk/client-dynamodb'
 import {
@@ -81,17 +81,7 @@ export const sandbox = {
       return
     }
 
-    const dynamodbClient = DynamoDBDocumentClient.from(
-      new DynamoDBClient({
-        region: inv.aws.region,
-        endpoint: local.url,
-        requestHandler: {
-          requestTimeout: 10_000,
-          httpsAgent: { maxSockets: 500 }, // Increased from default to allow for higher throughput
-        },
-        credentials,
-      })
-    )
+    const dynamodbClient = DynamoDBDocumentClient.from(local.client)
     const seedFile = arc['architect-plugin-dynamodb-local']?.find(
       (item: string[]) => item[0] == 'seedFile'
     )[1]
@@ -102,8 +92,8 @@ export const sandbox = {
     if (tableStreams?.length) {
       const ddbStreamsClient = new DynamoDBStreamsClient({
         region: inv.aws.region,
-        endpoint: local.url,
-        credentials,
+        endpoint: local.client.config.endpoint,
+        credentials: local.client.config.credentials,
       })
       // Init table streams for those defined
       await Promise.all(

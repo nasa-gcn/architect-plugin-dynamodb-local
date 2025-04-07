@@ -8,16 +8,23 @@
 import { credentials } from './index'
 import { updater } from '@architect/utils'
 import { DynamoDBClient, ListTablesCommand } from '@aws-sdk/client-dynamodb'
-import {
-  launchDockerSubprocess,
-  sleep,
-  UnexpectedResolveError,
-} from '@nasa-gcn/architect-plugin-utils'
-import waitPort from 'wait-port'
+import { launchDockerSubprocess, sleep } from '@nasa-gcn/architect-plugin-utils'
+
+async function waitForConnection(client: DynamoDBClient) {
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    try {
+      const { TableNames } = await client.send(new ListTablesCommand({}))
+      if (TableNames) return
+    } catch {
+      /* empty */
+    }
+    await sleep(1000)
+  }
+}
 
 export async function launch(port: number) {
   const update = updater('DynamoDB Local')
-  const url = `http://0.0.0.0:${port}`
   const { kill, waitUntilStopped } = await launchDockerSubprocess({
     Image: 'amazon/dynamodb-local',
     Cmd: ['-jar', 'DynamoDBLocal.jar', '-sharedDb', '-dbPath', '/tmp/'],
@@ -30,41 +37,25 @@ export async function launch(port: number) {
       },
     },
   })
-  update.status(`Waiting for connection on port ${port}`)
+  const untilStopped = waitUntilStopped()
+  const client = new DynamoDBClient({
+    endpoint: `http://0.0.0.0:${port}`,
+    credentials,
+  })
+  update.update(`Waiting for DynamoDB to be up`)
   try {
-    await waitPort({ port })
-    let dynamodbReady = false
-    const ddbClient = new DynamoDBClient({
-      endpoint: url,
-      credentials,
-    })
-    update.status(`Waiting for DynamoDB to be up`)
-    while (!dynamodbReady) {
-      try {
-        update.status('Connecting...')
-        const ddbPing = await ddbClient.send(new ListTablesCommand({}))
-        if (ddbPing.TableNames) dynamodbReady = true
-      } catch (e) {
-        update.status(e, ', table connection not ready, trying again')
-        await sleep(1000)
-      }
-    }
+    await Promise.race([untilStopped, waitForConnection(client)])
   } catch (e) {
-    if (e instanceof UnexpectedResolveError) {
-      throw new Error('Local DynamoDB instance terminated unexpectedly')
-    } else {
-      console.error(e)
-    }
+    update.err('Search engine terminated unexpectedly')
+    throw e
   }
-
   update.done('DynamoDB is up!')
 
   return {
-    url,
-    port,
+    client,
     async stop() {
       await kill()
-      await waitUntilStopped()
+      await untilStopped
     },
   }
 }
