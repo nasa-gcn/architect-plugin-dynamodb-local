@@ -54,7 +54,7 @@
     "@types/node": "^22.2.0",
     "@typescript-eslint/eslint-plugin": "^5.53.0",
     "esbuild": "^0.25.0",
-    "eslint": "^8.34.0",
+    "eslint": "^9.24.0",
     "eslint-config-prettier": "^9.1.0",
     "execa": "^9.5.2",
     "husky": "^9.1.0",
