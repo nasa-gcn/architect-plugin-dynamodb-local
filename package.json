@@ -46,7 +46,7 @@
     "@aws-sdk/util-dynamodb": "^3.731.1",
     "@nasa-gcn/eslint-config-gitignore": "^0.0.2",
     "@trivago/prettier-plugin-sort-imports": "^5.2.2",
-    "@tsconfig/node14": "^14.1.2",
+    "@tsconfig/node20": "^20.1.5",
     "@types/architect__utils": "^4.0.0",
     "@types/aws-lambda": "^8.10.147",
     "@types/lodash": "^4.17.15",

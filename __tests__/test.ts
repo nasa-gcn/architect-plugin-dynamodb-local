@@ -58,7 +58,7 @@ describe('dynamodb-local stops on Ctrl-C', () => {
 
     response = await fetch('http://localhost:3333/carts/the-doctor')
     assert(response.ok)
-    json = await response.json()
+    json = (await response.json()) as { cartTotal: number }
     assert.strictEqual(json.cartTotal, 50)
 
     // 50% off sale on sonic screwdrivers!
@@ -77,7 +77,7 @@ describe('dynamodb-local stops on Ctrl-C', () => {
 
     response = await fetch('http://localhost:3333/carts/the-doctor')
     assert(response.ok)
-    json = await response.json()
+    json = (await response.json()) as { cartTotal: number }
     assert.strictEqual(json.cartTotal, 40)
   })
 })
