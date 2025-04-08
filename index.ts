@@ -42,12 +42,6 @@ let abortController: AbortController
 
 const shardMap: { [key: string]: ShardItem[] } = {}
 
-export const credentials = {
-  // Any credentials can be provided for local
-  accessKeyId: 'localDb',
-  secretAccessKey: 'randomAnyString',
-}
-
 // @ts-expect-error: The Architect plugins API has no type definitions.
 function isEnabled(inv) {
   return Boolean(
