@@ -5,7 +5,6 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-import { credentials } from './index'
 import { updater } from '@architect/utils'
 import { DynamoDBClient, ListTablesCommand } from '@aws-sdk/client-dynamodb'
 import { launchDockerSubprocess, sleep } from '@nasa-gcn/architect-plugin-utils'
@@ -40,7 +39,11 @@ export async function launch(port: number) {
   const untilStopped = waitUntilStopped()
   const client = new DynamoDBClient({
     endpoint: `http://0.0.0.0:${port}`,
-    credentials,
+    credentials: {
+      // Any credentials can be provided for local
+      accessKeyId: 'localDb',
+      secretAccessKey: 'randomAnyString',
+    },
   })
   update.update(`Waiting for DynamoDB to be up`)
   try {
