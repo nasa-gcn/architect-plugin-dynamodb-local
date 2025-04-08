@@ -10,7 +10,6 @@ import { TableStreamItem } from './types.js'
 import _arcFunctions from '@architect/functions'
 import { updater } from '@architect/utils'
 import {
-  DescribeTableCommand,
   type DynamoDBClient,
   UpdateTableCommand,
 } from '@aws-sdk/client-dynamodb'
@@ -29,18 +28,18 @@ import { NativeAttributeValue } from '@aws-sdk/util-dynamodb'
 import { periodically } from '@nasa-gcn/architect-plugin-utils'
 import chunk from 'lodash/chunk.js'
 import { access, constants, readFile } from 'node:fs/promises'
+import invariant from 'tiny-invariant'
 import { dedent } from 'ts-dedent'
 
 let local: Awaited<ReturnType<typeof launch>>
 
-type ShardItem = {
-  ShardIterator: string
-}
-
 let dynamoDbStreamsLoop: Promise<void>
 let abortController: AbortController
 
-const shardMap: { [key: string]: ShardItem[] } = {}
+function defined<T>(value: T) {
+  invariant(value)
+  return value
+}
 
 // @ts-expect-error: The Architect plugins API has no type definitions.
 function isEnabled(inv) {
@@ -79,95 +78,87 @@ export const sandbox = {
       return
     }
 
-    const dynamodbClient = DynamoDBDocumentClient.from(local.client)
     const seedFile = arc['dynamodb-local']?.find(
       (item: string[]) => item[0] == 'seedFile'
     )[1]
-    const client = await _arcFunctions.tables()
-    if (seedFile) await seedDb(seedFile, dynamodbClient)
-    const tableStreams: TableStreamItem[] = inv['tables-streams']
+    if (seedFile)
+      await seedDb(seedFile, DynamoDBDocumentClient.from(local.client))
+
     abortController = new AbortController()
-    if (tableStreams?.length) {
+
+    const tableStreamsConfig: TableStreamItem[] | undefined =
+      inv['tables-streams']
+    if (tableStreamsConfig?.length) {
+      const arc_tables = await _arcFunctions.tables()
       const ddbStreamsClient = new DynamoDBStreamsClient({
         region: inv.aws.region,
         endpoint: local.client.config.endpoint,
         credentials: local.client.config.credentials,
       })
-      // Init table streams for those defined
-      await Promise.all(
-        tableStreams
-          .map(({ table }) => table)
-          .filter(
-            (item: string, index: number, tableNames: string[]) =>
-              tableNames.indexOf(item) === index
-          )
-          .map((table: string) =>
-            dynamodbClient.send(
-              new UpdateTableCommand({
-                TableName: client.name(table),
-                StreamSpecification: {
-                  StreamEnabled: true,
-                  StreamViewType: 'NEW_AND_OLD_IMAGES',
-                },
-              })
-            )
-          )
-      )
-      // Reset Stream defaults
-      for (const arcStream of tableStreams) {
-        shardMap[arcStream.table] = []
-        await resetTableStreams(
-          dynamodbClient,
-          ddbStreamsClient,
-          arcStream.table
+
+      const streamIterators = Object.entries(
+        Object.groupBy(tableStreamsConfig, ({ table }) => table)
+      ).map(async function* ([table, configs]) {
+        const { TableDescription } = await local.client.send(
+          new UpdateTableCommand({
+            TableName: arc_tables.name(table),
+            StreamSpecification: {
+              StreamEnabled: true,
+              StreamViewType: 'NEW_AND_OLD_IMAGES',
+            },
+          })
         )
-      }
-
-      dynamoDbStreamsLoop = periodically(
-        () => streamLoop(ddbStreamsClient),
-        2000,
-        abortController.signal
-      )
-    }
-
-    async function streamLoop(ddbStreamsClient: DynamoDBStreamsClient) {
-      for (const key of Object.keys(shardMap)) {
-        if (shardMap[key].length) {
-          const shardItem = shardMap[key].pop()
-          if (!shardItem) continue
+        const StreamArn = TableDescription?.LatestStreamArn
+        while (!abortController.signal.aborted) {
+          const { StreamDescription } = await ddbStreamsClient.send(
+            new DescribeStreamCommand({ StreamArn })
+          )
           try {
-            const event = await ddbStreamsClient.send(
-              new GetRecordsCommand({
-                ShardIterator: shardItem.ShardIterator,
-              })
-            )
-            if (event.Records?.length) {
-              tableStreams
-                .filter((x) => x.table === key)
-                .forEach((x) => {
-                  invoke({
-                    pragma: 'tables-streams',
-                    name: x.name,
-                    payload: event,
-                  })
+            for (const { ShardId } of defined(StreamDescription?.Shards)) {
+              let { ShardIterator } = await ddbStreamsClient.send(
+                new GetShardIteratorCommand({
+                  ShardId,
+                  StreamArn,
+                  ShardIteratorType: 'TRIM_HORIZON',
                 })
+              )
+              while (ShardIterator) {
+                const { NextShardIterator, ...payload } =
+                  await ddbStreamsClient.send(
+                    new GetRecordsCommand({ ShardIterator })
+                  )
+                if (payload.Records?.length) {
+                  for (const { name, pragma } of defined(configs)) {
+                    try {
+                      await invoke({
+                        name,
+                        pragma,
+                        payload,
+                      })
+                    } catch (e) {
+                      console.error(e)
+                    }
+                  }
+                }
+                ShardIterator = NextShardIterator
+                yield
+              }
             }
-
-            if (event.NextShardIterator) {
-              shardMap[key].push({
-                ShardIterator: event.NextShardIterator,
-              })
-            }
-          } catch (error) {
-            if (error instanceof TrimmedDataAccessException) {
-              console.log(error.name)
-              await resetTableStreams(dynamodbClient, ddbStreamsClient, key)
+          } catch (e) {
+            if (e instanceof TrimmedDataAccessException) {
+              console.error(e)
             } else {
-              throw error
+              throw e
             }
           }
         }
-      }
+      })
+
+      dynamoDbStreamsLoop = periodically(
+        () => Promise.all(streamIterators.map((gen) => gen.next())),
+        1000,
+        abortController.signal
+      )
     }
   },
   async end() {
@@ -236,44 +227,5 @@ async function seedDb(seedFile: string, dynamoDB: DynamoDBClient) {
     update.done(`Initialized database from "${seedFile}"`)
   } catch (error) {
     update.err(error)
-  }
-}
-
-async function resetTableStreams(
-  ddbClient: DynamoDBClient,
-  ddbStreamsClient: DynamoDBStreamsClient,
-  arcTableName: string
-) {
-  const db = await _arcFunctions.tables()
-  const tableName = db.name(arcTableName)
-  const table = await ddbClient.send(
-    new DescribeTableCommand({
-      TableName: tableName,
-    })
-  )
-  const stream = await ddbStreamsClient.send(
-    new DescribeStreamCommand({
-      StreamArn: table.Table?.LatestStreamArn,
-    })
-  )
-  const shardArray = stream.StreamDescription?.Shards
-  if (shardArray && table.Table?.LatestStreamArn) {
-    for (const shard of shardArray) {
-      if (shard.ShardId) {
-        const ShardIterator = (
-          await ddbStreamsClient.send(
-            new GetShardIteratorCommand({
-              StreamArn: table.Table.LatestStreamArn,
-              ShardIteratorType: 'TRIM_HORIZON',
-              ShardId: shard.ShardId,
-            })
-          )
-        ).ShardIterator
-
-        if (ShardIterator) {
-          shardMap[arcTableName] = [{ ShardIterator }]
-        }
-      }
-    }
   }
 }
