@@ -32,7 +32,7 @@
     "@aws-sdk/client-dynamodb-streams": "^3.731.1",
     "@aws-sdk/client-ssm": "^3.731.1",
     "@aws-sdk/lib-dynamodb": "^3.731.1",
-    "@nasa-gcn/architect-plugin-utils": "^0.3.0",
+    "@nasa-gcn/architect-plugin-utils": "^0.4.0",
     "lodash": "^4.17.21",
     "ts-dedent": "^2.2.0"
   },
