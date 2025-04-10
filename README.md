@@ -38,7 +38,7 @@ nasa-gcn/architect-plugin-dynamodb-local
 1. Seeding the database (optional):
 
 ```
-@architect-plugin-dynamodb-local
+@dynamodb-local
 seedFile your-seed-file.json
 ```
 
