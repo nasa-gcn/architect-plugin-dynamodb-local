@@ -76,7 +76,7 @@ export const sandbox = {
     }
 
     const dynamodbClient = DynamoDBDocumentClient.from(local.client)
-    const seedFile = arc['architect-plugin-dynamodb-local']?.find(
+    const seedFile = arc['dynamodb-local']?.find(
       (item: string[]) => item[0] == 'seedFile'
     )[1]
     const client = await _arcFunctions.tables()

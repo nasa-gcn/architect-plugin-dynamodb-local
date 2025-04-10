@@ -16,7 +16,7 @@ carts
 products
   src src/tables-streams/products
 
-@architect-plugin-dynamodb-local
+@dynamodb-local
 seedFile seed.json
 
 @plugins
