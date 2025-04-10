@@ -8,7 +8,7 @@ export async function handler(event) {
     const oldImage = unmarshall(dynamodb.OldImage)
     const newImage = unmarshall(dynamodb.NewImage)
     const productName = newImage.productName
-    const carts = await db.carts.scanAll()
+    const { Items: carts } = await db.carts.scan()
     await Promise.all(
       carts.map((cart) => {
         const cartProduct = cart.cartProducts.find(
