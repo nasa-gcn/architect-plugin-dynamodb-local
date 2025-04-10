@@ -38,7 +38,7 @@ export async function launch(port: number) {
   })
   const untilStopped = waitUntilStopped()
   const client = new DynamoDBClient({
-    endpoint: `http://0.0.0.0:${port}`,
+    endpoint: `http://localhost:${port}`,
     credentials: {
       // Any credentials can be provided for local
       accessKeyId: 'localDb',
