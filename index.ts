@@ -61,7 +61,8 @@ function getPort(inv) {
 export const deploy = {
   // @ts-expect-error: The Architect plugins API has no type definitions.
   async services({ inventory: { inv } }) {
-    if (isEnabled(inv)) local = await launch(getPort(inv))
+    if (process.argv.includes('sandbox') && isEnabled(inv))
+      local = await launch(getPort(inv))
   },
 }
 
