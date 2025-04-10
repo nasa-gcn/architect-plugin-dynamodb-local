@@ -58,11 +58,14 @@ function getPort(inv) {
   )
 }
 
+function isSandbox() {
+  return process.argv.includes('sandbox')
+}
+
 export const deploy = {
   // @ts-expect-error: The Architect plugins API has no type definitions.
   async services({ inventory: { inv } }) {
-    if (process.argv.includes('sandbox') && isEnabled(inv))
-      local = await launch(getPort(inv))
+    if (isSandbox() && isEnabled(inv)) local = await launch(getPort(inv))
   },
 }
 
@@ -171,6 +174,15 @@ export const sandbox = {
     abortController.abort()
     await dynamoDbStreamsLoop
     await local.stop()
+  },
+}
+
+// Versions of @architect/sandbox did not not define credentials for DynamoDB
+// in sandbox mode.
+export const set = {
+  env() {
+    if (isSandbox())
+      return { AWS_ACCESS_KEY_ID: 'dummy', AWS_SECRET_ACCESS_KEY: 'dummy' }
   },
 }
 

@@ -38,7 +38,7 @@
   },
   "devDependencies": {
     "@architect/architect": "^11.2.2",
-    "@architect/functions": "^8.1.9",
+    "@architect/functions": "^5.3.4",
     "@aws-lite/apigatewaymanagementapi-types": "^0.0.13",
     "@aws-lite/dynamodb-types": "^0.3.11",
     "@aws-lite/sns-types": "^0.0.10",
