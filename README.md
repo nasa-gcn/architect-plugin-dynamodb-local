@@ -17,30 +17,30 @@ There is an issue with the Docker image of DynamoDB local that causes a `Trimmed
 
 1. Install this package using npm:
 
-```
-npm install -D @nasa-gcn/architect-plugin-dynamodb-local
-```
+   ```
+   npm install -D @nasa-gcn/architect-plugin-dynamodb-local
+   ```
 
-1. In your `.env` add the following:
+2. In your `.env` add the following:
 
-```
-ARC_TABLES_PORT=8000
-ARC_DB_EXTERNAL=true
-```
+   ```
+   ARC_TABLES_PORT=8000
+   ARC_DB_EXTERNAL=true
+   ```
 
-1. Add the following to your project's `app.arc` configuration file:
+3. Add the following to your project's `app.arc` configuration file:
 
-```
-@plugins
-nasa-gcn/architect-plugin-dynamodb-local
-```
+   ```
+   @plugins
+   nasa-gcn/architect-plugin-dynamodb-local
+   ```
 
-1. Seeding the database (optional):
+4. Seeding the database (optional):
 
-```
-@dynamodb-local
-seedFile your-seed-file.json
-```
+   ```
+   @dynamodb-local
+   seedFile your-seed-file.json
+   ```
 
 If you want to utilize the @tables-streams, include a json formatted seedFile. The database will be seeded automatically during initialization. This will happen **BEFORE** Architect's built-in seeding step. By default, Architect will look for a file named `sandbox-seed.json` or `sandbox-seed.js` to seed the database. If you use this feature name the file differently, otherwise this plugin will skip the file seeding. To easily switch from using the built-in seed function, you can simply rename your existing `sandbox-seed.[js|json]` file and pass that as an argument to the plugin.
 
