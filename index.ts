@@ -16,6 +16,7 @@ import {
 import {
   DescribeStreamCommand,
   DynamoDBStreamsClient,
+  ExpiredIteratorException,
   GetRecordsCommand,
   GetShardIteratorCommand,
   TrimmedDataAccessException,
@@ -147,6 +148,8 @@ export const sandbox = {
           } catch (e) {
             if (e instanceof TrimmedDataAccessException) {
               console.error(e)
+            } else if (e instanceof ExpiredIteratorException) {
+              /* empty */
             } else {
               throw e
             }
