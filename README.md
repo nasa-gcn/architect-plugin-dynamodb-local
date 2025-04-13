@@ -6,8 +6,6 @@ When you are using Architect's sandbox mode, the plugin starts a Docker containe
 
 If you have defined a `@tables-streams` section in your `app.arc` file, the respective streams will be enabled and their configured lambdas automatically triggered.
 
-There is an issue with the Docker image of DynamoDB local that causes a `TrimmedDataAccessException` error to be thrown on the first read. This problem lies deeper within DynamoDB and is out of the scope of this plugin. To handle this issue, there is a reset function that will trigger automatically. In practice, this means that the first invocation will fail (you will see a logged `TrimmedDataAccessException` message in your console), but the following invocations will work successfully.
-
 ## Prerequisites
 
 - Docker installed and running on your system.
