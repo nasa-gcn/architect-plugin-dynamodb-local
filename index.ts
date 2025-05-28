@@ -180,7 +180,12 @@ export const sandbox = {
 export const set = {
   env() {
     const credsPath = join(homedir(), '.aws', 'credentials')
-    if (isSandbox() && !existsSync(credsPath))
+    if (process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY) {
+      return {
+        AWS_ACCESS_KEY_ID: process.env.AWS_ACCESS_KEY_ID,
+        AWS_SECRET_ACCESS_KEY: process.env.AWS_SECRET_ACCESS_KEY,
+      }
+    } else if (isSandbox() && !existsSync(credsPath))
       return { AWS_ACCESS_KEY_ID: 'dummy', AWS_SECRET_ACCESS_KEY: 'dummy' }
     else return {}
   },
