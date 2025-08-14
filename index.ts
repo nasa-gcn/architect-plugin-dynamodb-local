@@ -28,7 +28,10 @@ import {
 import { NativeAttributeValue } from '@aws-sdk/util-dynamodb'
 import { periodically } from '@nasa-gcn/architect-plugin-utils'
 import chunk from 'lodash/chunk.js'
+import { existsSync } from 'node:fs'
 import { access, constants, readFile } from 'node:fs/promises'
+import { homedir } from 'node:os'
+import { join } from 'node:path'
 import invariant from 'tiny-invariant'
 import { dedent } from 'ts-dedent'
 
@@ -176,7 +179,13 @@ export const sandbox = {
 // in sandbox mode.
 export const set = {
   env() {
-    if (isSandbox())
+    const credsPath = join(homedir(), '.aws', 'credentials')
+    if (process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY) {
+      return {
+        AWS_ACCESS_KEY_ID: process.env.AWS_ACCESS_KEY_ID,
+        AWS_SECRET_ACCESS_KEY: process.env.AWS_SECRET_ACCESS_KEY,
+      }
+    } else if (isSandbox() && !existsSync(credsPath))
       return { AWS_ACCESS_KEY_ID: 'dummy', AWS_SECRET_ACCESS_KEY: 'dummy' }
     else return {}
   },
