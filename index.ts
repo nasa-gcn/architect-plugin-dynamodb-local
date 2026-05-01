@@ -178,7 +178,13 @@ export const set = {
   env() {
     if (isSandbox())
       return { AWS_ACCESS_KEY_ID: 'dummy', AWS_SECRET_ACCESS_KEY: 'dummy' }
-    else return {}
+    else
+      // FIXME: If https://github.com/architect/inventory/pull/81 is fixed,
+      // change this line to return an empty object, {}
+      return {
+        DYNAMODB_LOCAL_DUMMY_UNUSED:
+          'Workaround for https://github.com/architect/inventory/pull/81',
+      }
   },
 }
 
