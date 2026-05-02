@@ -4,7 +4,7 @@
   "version": "0.1.2",
   "repository": {
     "type": "git",
-    "url": "github:nasa-gcn/architect-plugin-dynamodb-local"
+    "url": "git+https://github.com/nasa-gcn/architect-plugin-dynamodb-local.git"
   },
   "license": "Apache-2.0",
   "contributors": [
