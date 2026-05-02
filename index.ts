@@ -5,8 +5,8 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-import { launch } from './run.js'
-import { TableStreamItem } from './types.js'
+import { launch } from './run.ts'
+import { TableStreamItem } from './types.ts'
 import _arcFunctions from '@architect/functions'
 import { updater } from '@architect/utils'
 import {
